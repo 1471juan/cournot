@@ -1,0 +1,1 @@
+Simulation for collusion between two firms in cournot competition.
