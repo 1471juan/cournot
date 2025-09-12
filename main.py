@@ -53,7 +53,7 @@ class cournot:
     def get_price(self):
         #returns market price
         Q = self.get_quantity()
-        return self.market_obj.get_function_InverseDemand(sum(Q))
+        return self.market_obj.get_function_inverseDemand(sum(Q))
         
     def get_monopoly(self):
         #returns monopoly profit, quantity and price
@@ -62,7 +62,7 @@ class cournot:
         for f in self.firms:
             firm_quantity=firm_quantity-((f.get_mc()/self.market_obj.get_n()))
         M_Q = firm_quantity / 2
-        M_P = self.market_obj.get_function_InverseDemand(M_Q)
+        M_P = self.market_obj.get_function_inverseDemand(M_Q)
         costs=0
         for f in self.firms:
             costs+=f.get_mc()*(M_Q/self.market_obj.get_n()) + f.get_Fc()
@@ -79,7 +79,7 @@ class cournot:
         q1=((self.market_obj.get_n() + 1) * self.market_obj.get_a() + (self.market_obj.get_n() - 1)
              * (m_costs/self.market_obj.get_n()) - 2 * self.market_obj.get_n() * self.firms[0].get_mc()) / (4 * self.market_obj.get_n())
         q = q1 + ((self.market_obj.get_n()-1)*collusion_Q/self.market_obj.get_n())
-        p=self.market_obj.get_function_InverseDemand(q)
+        p=self.market_obj.get_function_inverseDemand(q)
         return p*q1 - self.firms[0].get_mc() * q1 - self.firms[0].get_Fc()
     
     def get_discountFactor(self,c_Z, m_Z, d_Z):
@@ -106,14 +106,71 @@ class cournot:
         print(f'collusion Q: {m_q}')
         print(f'collusion price: {m_p}')
         print(f'delta needed for collusion: {delta}')
-        
+
+class model:
+    def __init__(self):
+        self.var = {}   
+        self.par = {}   
+        self.profits = {}  
+
+    def add_firm(self, name):
+        self.var[name] = {"value": 1}
+
+    def add_profit(self, name, profit_function):
+        self.profits[name] = profit_function
+
+    def optimize(self, name, iterations=100):
+        #approximates a partial derivative to maximize f
+        for i in range(iterations):
+            x = self.var[name]["value"]
+            q = {name: v["value"] for name, v in self.var.items()}
+            f = self.profits[name]
+            #central difference estimate using this definition
+            #(∂f/∂x ≈ (f(x+h) - f(x-h)) / (2h))
+            h = 0.000001
+            q[name] = x + h
+            f_1 = f(**q, **self.par)
+            q[name] = x - h
+            f_2 = f(**q, **self.par)
+            grad = (f_1 - f_2) / (2 * h)
+            x_new = x + 0.01 * grad
+            if x_new<0: x_new=0
+            self.var[name]["value"] = x_new
+
+    def get_output(self):
+        i = 0
+        while i < 1000:
+            for firm in self.var:
+                self.optimize(firm, 1)
+            i+=1
+        return {name: info["value"] for name, info in self.var.items()}
+          
+def demand(q1,q2):
+    return 100 - (q1 + q2)
+
+def profit_1(q1, q2):
+    P = demand(q1,q2)
+    return q1 * P - 25*q1*q1
+
+def profit_2(q1, q2):
+    P = demand(q1,q2)
+    return q2 * P - 25*q2*q2
+
 def main():
     firm_1= firm(25,0)
-    firm_2= firm(30,0)
-    firm_3= firm(50,0)
+    firm_2= firm(50,0)
+    firm_3= firm(30,0)
     market_1=market(200,3)
-    model=cournot(market_1,[firm_1,firm_2,firm_3])
-    print(model.summary())
+    model_cournot=cournot(market_1,[firm_1,firm_2,firm_3])
+    model_cournot.summary()
+    
+    model_1 = model()
+    model_1.add_firm("q1")
+    model_1.add_firm("q2")
+    model_1.add_profit("q1", profit_1)
+    model_1.add_profit("q2", profit_2)
+    print('--model 1--')
+    print(model_1.get_output())
 
 if __name__ == "__main__":
     main()
