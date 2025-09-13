@@ -1,16 +1,42 @@
 class firm:
-    def __init__(self, mc, Fc):
+    def __init__(self,name, mc, Fc, market_obj):
         self.mc=mc
         self.Fc=Fc
+        self.name=name
+        self.market_obj=market_obj
+        self.weigh=None
 
+    def get_name(self):
+        #returns name
+        return self.name
+    
     def get_mc(self):
         #returns marginal cost
         return self.mc
+    
     def get_Fc(self):
         #returns fixed cost
         return self.Fc
-    def get_profit(self,p,q):
-        return (p - self.mc)*q - self.Fc
+    
+    def set_weigh(self,w):
+        #sets weigh
+        self.weigh=w
+    def get_weigh(self):
+        #returns weigh
+        return self.weigh
+    
+    def get_costs(self,q):
+        #returns total cost
+        return self.mc*q + self.Fc
+    
+    def get_profit(self,q,p):
+        #returns profit
+        return p*q - self.get_costs(q)
+    
+    def profit(self, **params):
+        q = params[self.name]
+        P = self.market_obj.get_inversedemand(sum(params.values()))
+        return q*P - self.get_costs(q)
 
 class market:
     def __init__(self, a, n):
@@ -25,98 +51,29 @@ class market:
         #returns number of firms
         return self.n
     
-    def get_function_inverseDemand(self,q:int)->int:
+    def set_n(self,new_n):
+        #set number of firms
+        self.n=new_n
+    
+    def get_inversedemand(self, Q):
         #returns price
-        return self.a - q
-    
-class cournot:
-    def __init__(self, market_obj: market, firms):
-        self.market_obj = market_obj
-        self.firms = firms
+        return self.a - Q
 
-    def add_firm(self,firm_obj):
-        self.firms.append(firm_obj)
-
-    #def get_bestresponse(self,a,q1,q2,c1,c2):
-        #returns q1,q2
-    #    return (a-q2-c1)/2, (a-q1-c2)/2,
-    
-    def get_quantity(self):
-        #returns list with q
-        Q = []
-        for i, f in enumerate(self.firms):
-            mc_otherfirms = sum(k.get_mc() for j, k in enumerate(self.firms) if j != i)
-            firm_quantity = (self.market_obj.get_a() - 2*f.get_mc() + mc_otherfirms) / (self.market_obj.get_n() + 1)
-            Q.append(firm_quantity)
-        return Q
-    
-    def get_price(self):
-        #returns market price
-        Q = self.get_quantity()
-        return self.market_obj.get_function_inverseDemand(sum(Q))
-        
-    def get_monopoly(self):
-        #returns monopoly profit, quantity and price
-        #we assume each firm produces half of the total monopoly quantities.
-        firm_quantity = self.market_obj.get_a()
-        for f in self.firms:
-            firm_quantity=firm_quantity-((f.get_mc()/self.market_obj.get_n()))
-        M_Q = firm_quantity / 2
-        M_P = self.market_obj.get_function_inverseDemand(M_Q)
-        costs=0
-        for f in self.firms:
-            costs+=f.get_mc()*(M_Q/self.market_obj.get_n()) + f.get_Fc()
-        M_Z = (M_P*M_Q) - costs
-        return M_Z, M_Q, M_P
-    
-    def get_deviation_profit(self):
-        #returns deviation profit
-        #we assume firm 1(firms[0]) deviates from collusion
-        Z,collusion_Q,collussion_P=self.get_monopoly()
-        m_costs=0
-        for f in self.firms:
-            m_costs+=f.get_mc()
-        q1=((self.market_obj.get_n() + 1) * self.market_obj.get_a() + (self.market_obj.get_n() - 1)
-             * (m_costs/self.market_obj.get_n()) - 2 * self.market_obj.get_n() * self.firms[0].get_mc()) / (4 * self.market_obj.get_n())
-        q = q1 + ((self.market_obj.get_n()-1)*collusion_Q/self.market_obj.get_n())
-        p=self.market_obj.get_function_inverseDemand(q)
-        return p*q1 - self.firms[0].get_mc() * q1 - self.firms[0].get_Fc()
-    
-    def get_discountFactor(self,c_Z, m_Z, d_Z):
-        return (d_Z - (m_Z / self.market_obj.get_n() ) ) / (d_Z - c_Z)
-    
-    def summary(self):
-        Q=self.get_quantity()
-        p=self.get_price()
-        m_Z, m_q, m_p=self.get_monopoly()
-        d_Z=self.get_deviation_profit()
-        delta=self.get_discountFactor(self.firms[0].get_profit(p,Q[0]), m_Z, d_Z)
-        print('--Results cournot--')
-        for i,f in enumerate(self.firms):
-            print(f'firm {i} marginal cost: {f.get_mc()}')
-            print(f'firm {i} Q: {Q[i]}')
-            print(f'firm {i} profit: {f.get_profit(p,Q[i])}')
-        print(f'market price: {p}')
-        t_p=0
-        for i,f in enumerate(self.firms):
-            t_p+=f.get_profit(p,Q[i])
-        print(f'Total profits: {t_p}')
-        print('--Results collusion--')
-        print(f'collusion total profits: {m_Z}')
-        print(f'collusion Q: {m_q}')
-        print(f'collusion price: {m_p}')
-        print(f'delta needed for collusion: {delta}')
 
 class model:
-    def __init__(self):
+    def __init__(self,r,iter):
         self.var = {}   
         self.par = {}   
         self.profits = {}  
+        self.r=r
+        self.iter=iter
 
     def add_firm(self, name):
+        #add firm
         self.var[name] = {"value": 1}
 
     def add_profit(self, name, profit_function):
+        #add profit function to a firm
         self.profits[name] = profit_function
 
     def optimize(self, name, iterations=100):
@@ -126,51 +83,191 @@ class model:
             q = {name: v["value"] for name, v in self.var.items()}
             f = self.profits[name]
             #central difference estimate using this definition
-            #(∂f/∂x ≈ (f(x+h) - f(x-h)) / (2h))
-            h = 0.000001
+            #(df/dx = (f(x+h) - f(x-h)) / (2h))
+            h = 0.00001
             q[name] = x + h
             f_1 = f(**q, **self.par)
             q[name] = x - h
             f_2 = f(**q, **self.par)
             grad = (f_1 - f_2) / (2 * h)
-            x_new = x + 0.01 * grad
+            x_new = x + self.r * grad
             if x_new<0: x_new=0
             self.var[name]["value"] = x_new
 
     def get_output(self):
         i = 0
-        while i < 1000:
+        while i < self.iter:
             for firm in self.var:
                 self.optimize(firm, 1)
             i+=1
         return {name: info["value"] for name, info in self.var.items()}
           
-def demand(q1,q2):
-    return 100 - (q1 + q2)
+class cournot:
+    def __init__(self, market_obj: market, firms):
+        self.market_obj = market_obj
+        self.firms = firms
+        self.model_cournot=model(0.01,1000)
+        self.model_monopoly=model(0.01,1000)
+        self.model_deviation=model(0.01,1000)
+        self.firms_mc=[]
+        for f in self.firms: self.firms_mc.append(f.get_mc())
+        self.flag_same_mc = check_mc(self.firms_mc)
+        self.firm_deviates_id=0
+        self.firm_deviates = self.firms[self.firm_deviates_id]
+    
+    def add_firm(self,firm_obj):
+        #adds firm to the model
+        self.firms.append(firm_obj)
+        self.market_obj.set_n(self.market_obj.get_n()+1)
+        self.firms_mc.clear()
+        for f in self.firms: self.firms_mc.append(f.get_mc())
+        self.flag_same_mc = check_mc(self.firms_mc)
 
-def profit_1(q1, q2):
-    P = demand(q1,q2)
-    return q1 * P - 25*q1*q1
+    def get_output(self):
+        #returns list with q
+        for firm in self.firms:
+            self.model_cournot.add_firm(firm.get_name())
+            self.model_cournot.add_profit(firm.get_name(), firm.profit)
+        Q = []
+        Q.extend(self.model_cournot.get_output().values())
+        return Q
 
-def profit_2(q1, q2):
-    P = demand(q1,q2)
-    return q2 * P - 25*q2*q2
+    def get_price(self):
+        #returns market price
+        Q = self.get_output()
+        return self.market_obj.get_inversedemand(sum(Q))
+        
+    def weigh_firms(self):
+        #calculate weigh for each firm based on the inverse of their marginal cost
+        for f in self.firms:
+            w=((1/f.get_mc()) / sum(1/mc for mc in self.firms_mc))
+            f.set_weigh(w)
+            #print(w)
+
+    def get_sum_others_weighted(self):
+        #returns the sum of the weighted collusion output for the firms that don't deviate.
+        sum_others_weighted=0
+        for f in self.firms:
+            if f != self.firm_deviates:
+                sum_others_weighted += self.m_Q * f.get_weigh()
+        return sum_others_weighted
+    
+    def monopoly_profit(self,**params):
+        #function to maximize in collusion
+        total_q = params['Q']
+        P = self.market_obj.get_inversedemand(total_q)
+        if self.flag_same_mc:
+            total_cost = sum(firm.get_mc() * (total_q / self.market_obj.get_n()) + firm.get_Fc() for firm in self.firms)
+        else:
+            total_cost=total_q*sum(firm.get_mc()*firm.get_weigh() for firm in self.firms) + sum(firm.get_Fc() for firm in self.firms)
+        return P * total_q - total_cost
+    
+    def get_monopoly(self):
+        #returns collusion profit, output and price
+        self.weigh_firms() 
+        self.model_monopoly.add_firm('Q')
+        self.model_monopoly.add_profit('Q', self.monopoly_profit)
+        output = self.model_monopoly.get_output() 
+        m_Q = output['Q']
+        m_P = self.market_obj.get_inversedemand(m_Q)
+        if self.flag_same_mc:
+            m_Z = m_P * m_Q - sum(firm.get_mc()*(m_Q / self.market_obj.get_n()) - firm.get_Fc() for firm in self.firms)
+        else:
+            m_Z = m_P * m_Q - (m_Q*sum(firm.get_mc()* firm.get_weigh() for firm in self.firms)) - sum(firm.get_Fc() for firm in self.firms)
+        return m_Z,m_Q,m_P
+    
+    def deviation_profit(self, **params):
+        #function to maximize in deviation
+        q = params[self.firm_deviates.get_name()]  
+        if self.flag_same_mc: 
+            P = self.market_obj.get_inversedemand(q + (self.m_Q/self.market_obj.get_n())*(self.market_obj.get_n()-1))
+        else:
+            P = self.market_obj.get_inversedemand(q + (self.get_sum_others_weighted()))
+        return (P-self.firm_deviates.get_mc()) * q - self.firm_deviates.get_Fc()
+    
+    def get_deviation_profit(self):
+        #returns deviation profit
+        self.m_Z, self.m_Q, self.m_P = self.get_monopoly() 
+        self.model_deviation.add_firm(self.firm_deviates.get_name())
+        self.model_deviation.add_profit(self.firm_deviates.get_name(), self.deviation_profit)
+        output = self.model_deviation.get_output()
+        d_Q = output[self.firm_deviates.get_name()]
+        self.d_Q=d_Q
+        if self.flag_same_mc:
+            q_other = (self.market_obj.get_n()-1) * (self.m_Q / self.market_obj.get_n())
+        else:
+            q_other=self.get_sum_others_weighted()
+        d_P = self.market_obj.get_inversedemand(d_Q+q_other)
+        d_Z = (d_P -self.firm_deviates.get_mc()) * d_Q - self.firm_deviates.get_Fc()
+        return d_Z
+
+    def get_discountFactor(self,c_Z, d_Z):
+        #returns discount factor needed for collusion to take place.
+        if d_Z-c_Z!=0:
+            if self.flag_same_mc:
+                return (d_Z - (self.m_Z / self.market_obj.get_n() ) ) / (d_Z - c_Z)
+            else:
+                m_Zi=self.firms[0].get_profit(self.m_Q * self.firms[0].get_weigh(),self.m_P)
+                return (d_Z - (m_Zi) ) / (d_Z - c_Z)
+        else:
+            return None
+    
+    def summary(self):
+        #run the model and print results
+        Q=self.get_output()
+        p=self.get_price()
+        d_Z=self.get_deviation_profit()
+        c_Zs=[]
+        for i,firm in enumerate(self.firms):
+            c_Zs.append(firm.get_profit(Q[i],p))
+        #c_Z=sum(c_Zs)
+        delta=self.get_discountFactor(self.firm_deviates.get_profit(Q[self.firm_deviates_id],p), d_Z)
+        print('--Results cournot--')
+        for i,firm in enumerate(self.firms):
+            print(f'firm {i} marginal cost: {firm.get_mc()}')
+            print(f'firm {i} Q: {Q[i]}')
+            print(f'firm {i} profit: {c_Zs[i]}')
+        print(f'market price: {p}')
+        t_p=0
+        for i,firm in enumerate(self.firms):
+            t_p+=c_Zs[i]
+        print(f'Total profits: {t_p}')
+        print('--Results collusion--')
+        print(f'collusion total profits: {self.m_Z}')
+        if self.flag_same_mc:
+            print(f'collusion profits per firm: {self.m_Z/self.market_obj.get_n()}')
+        else:
+            for f in self.firms:
+                m_Zi=f.get_profit(self.m_Q * f.get_weigh(),self.m_P)
+                print(f'collusion profits per firm {f.get_name()}: {(m_Zi)}')
+        print(f'collusion Q: {self.m_Q}')
+        print(f'collusion price: {self.m_P}')
+        print(f'deviation profit: {d_Z}')
+        print(f'delta needed for collusion: {delta}')
+
+def check_mc(my_list):
+    #returns boolean indicating whether there are asymmetric costs
+    for item in my_list:
+        if item != my_list[0]:
+            return False
+    return True
+
+def model_1():
+    #define the market
+    market_1 = market(100,2)
+
+    #define the firms
+    firm1 = firm('q1',5,0,market_1)
+    firm2 = firm('q2',10,0,market_1)
+
+    #define the cournot model
+    model_cournot = cournot(market_1,[firm1,firm2])
+
+    #run themodel and print results.
+    model_cournot.summary()
 
 def main():
-    firm_1= firm(25,0)
-    firm_2= firm(50,0)
-    firm_3= firm(30,0)
-    market_1=market(200,3)
-    model_cournot=cournot(market_1,[firm_1,firm_2,firm_3])
-    model_cournot.summary()
-    
-    model_1 = model()
-    model_1.add_firm("q1")
-    model_1.add_firm("q2")
-    model_1.add_profit("q1", profit_1)
-    model_1.add_profit("q2", profit_2)
-    print('--model 1--')
-    print(model_1.get_output())
+    model_1()
 
 if __name__ == "__main__":
     main()
