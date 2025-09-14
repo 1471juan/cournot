@@ -12,23 +12,29 @@ Simulation for collusion in an asymetric costs cournot competition game with n f
 
 ``class market``: object which contains market parameters and defines inverse demand function.
 
-``class model``: object which handles function optimization, used specifically to maximize profit and returning output
+``class model``: object which handles function optimization, used specifically to maximize profit and integrate the demand function
 
 ``class cournot``: the model
 
 ### how to use
 No external libraries are required. To run the model, you need to define the market and firm objects, use them as arguments to the Cournot model instance, and finally call summary() to print the results. See the sample code:
 ```
-    #define the market
-    market_1 = market(100,2)
+import cournot_sim as cs
 
-    #define the firms
-    firm1 = firm('q1',5,0,market_1)
-    firm2 = firm('q2',10,0,market_1)
+#define the market
+market_1 = cs.market(100,2)
 
-    #define the cournot model
-    model_cournot = cournot(market_1,[firm1,firm2])
+#define the firms
+firm1 = cs.firm('q1',5,0,market_1)
+firm2 = cs.firm('q2',10,0,market_1)
 
-    #run themodel and print results.
-    model_cournot.summary()
+#define the cournot model
+model_cournot = cs.cournot(market_1,[firm1,firm2])
+
+#run themodel and print results.
+model_cournot.summary()
+
+#add firms
+model_cournot.add_firm(cs.firm('q3',4,0,market_1))
+model_cournot.summary()
 ```
