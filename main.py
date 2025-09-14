@@ -120,9 +120,16 @@ class cournot:
         self.model_deviation=model(0.01,1000)
         self.firms_mc=[]
         for f in self.firms: self.firms_mc.append(f.get_mc())
-        self.flag_same_mc = check_mc(self.firms_mc)
+        self.flag_same_mc = self.check_mc()
         self.firm_deviates_id=0
         self.firm_deviates = self.firms[self.firm_deviates_id]
+
+    def check_mc(self):
+        #returns boolean indicating whether there are asymmetric costs
+        for i in self.firms_mc:
+            if i != self.firms_mc[0]:
+                return False
+        return True
     
     def add_firm(self,firm_obj):
         #adds firm to the model
@@ -130,7 +137,7 @@ class cournot:
         self.market_obj.set_n(self.market_obj.get_n()+1)
         self.firms_mc.clear()
         for f in self.firms: self.firms_mc.append(f.get_mc())
-        self.flag_same_mc = check_mc(self.firms_mc)
+        self.flag_same_mc = self.check_mc()
 
     def get_output(self):
         #returns list with q
@@ -226,6 +233,11 @@ class cournot:
         B=self.market_obj.get_inversedemand(Q)*Q
         return A-B
     
+    def get_elasticity(self, Q):
+        P0 = self.market_obj.get_inversedemand(Q)
+        P1 = self.market_obj.get_inversedemand(Q + 0.00001)
+        return - (P0 / Q) / ((P1 - P0) / 0.00001)
+    
     def summary(self):
         #run the model and print results
         Q=self.get_output()
@@ -236,8 +248,11 @@ class cournot:
             c_Zs.append(firm.get_profit(Q[i],p))
         c_Z=sum(c_Zs)
         delta=self.get_discountFactor(self.firm_deviates.get_profit(Q[self.firm_deviates_id],p), d_Z)
-        print('\n')
-        print('--Results cournot--')
+        print()
+        print('----Market----')
+        print(f'number of firms: {self.market_obj.get_n()}')
+        print()
+        print('----Results cournot----')
         for i,firm in enumerate(self.firms):
             print(f'firm {i} marginal cost: {firm.get_mc()}')
             print(f'firm {i} Q: {Q[i]}')
@@ -248,8 +263,9 @@ class cournot:
             t_p+=c_Zs[i]
         print(f'Total profits: {t_p}')
         print(f'Consumer surplus: {self.get_consumerSurplus(c_Z)}')
-        print('\n')
-        print('--Results collusion--')
+        print(f'demand elasticity: {self.get_elasticity(c_Z)}')
+        print()
+        print('----Results collusion----')
         print(f'collusion total profits: {self.m_Z}')
         if self.flag_same_mc:
             print(f'collusion profits per firm: {self.m_Z/self.market_obj.get_n()}')
@@ -260,15 +276,10 @@ class cournot:
         print(f'collusion Q: {self.m_Q}')
         print(f'collusion price: {self.m_P}')
         print(f'Consumer surplus: {self.get_consumerSurplus(self.m_Q)}')
+        print(f'demand elasticity: {self.get_elasticity(self.m_Q)}')
         print(f'deviation profit: {d_Z}')
         print(f'delta needed for collusion: {delta}')
 
-def check_mc(my_list):
-    #returns boolean indicating whether there are asymmetric costs
-    for item in my_list:
-        if item != my_list[0]:
-            return False
-    return True
 
 def model_1():
     #define the market
@@ -286,7 +297,6 @@ def model_1():
 
     #add fims
     model_cournot.add_firm(firm('q3',4,0,market_1))
-
     model_cournot.summary()
 
 
