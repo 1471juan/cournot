@@ -76,6 +76,15 @@ class model:
         #add profit function to a firm
         self.profits[name] = profit_function
 
+    def integration(self, function,a,b,iterations=1000):
+        size = (b - a) / iterations
+        total = 0
+        i=0
+        while i < iterations:
+            total += function(a + i*size) * size
+            i+=1
+        return total
+
     def optimize(self, name, iterations=100):
         #approximates a partial derivative to maximize f
         for i in range(iterations):
@@ -211,6 +220,11 @@ class cournot:
                 return (d_Z - (m_Zi) ) / (d_Z - c_Z)
         else:
             return None
+        
+    def get_consumerSurplus(self, Q):
+        A=self.model_cournot.integration(self.market_obj.get_inversedemand,0,Q,1000)
+        B=self.market_obj.get_inversedemand(Q)*Q
+        return A-B
     
     def summary(self):
         #run the model and print results
@@ -220,8 +234,9 @@ class cournot:
         c_Zs=[]
         for i,firm in enumerate(self.firms):
             c_Zs.append(firm.get_profit(Q[i],p))
-        #c_Z=sum(c_Zs)
+        c_Z=sum(c_Zs)
         delta=self.get_discountFactor(self.firm_deviates.get_profit(Q[self.firm_deviates_id],p), d_Z)
+        print('\n')
         print('--Results cournot--')
         for i,firm in enumerate(self.firms):
             print(f'firm {i} marginal cost: {firm.get_mc()}')
@@ -232,6 +247,8 @@ class cournot:
         for i,firm in enumerate(self.firms):
             t_p+=c_Zs[i]
         print(f'Total profits: {t_p}')
+        print(f'Consumer surplus: {self.get_consumerSurplus(c_Z)}')
+        print('\n')
         print('--Results collusion--')
         print(f'collusion total profits: {self.m_Z}')
         if self.flag_same_mc:
@@ -242,6 +259,7 @@ class cournot:
                 print(f'collusion profits per firm {f.get_name()}: {(m_Zi)}')
         print(f'collusion Q: {self.m_Q}')
         print(f'collusion price: {self.m_P}')
+        print(f'Consumer surplus: {self.get_consumerSurplus(self.m_Q)}')
         print(f'deviation profit: {d_Z}')
         print(f'delta needed for collusion: {delta}')
 
@@ -265,6 +283,12 @@ def model_1():
 
     #run themodel and print results.
     model_cournot.summary()
+
+    #add fims
+    model_cournot.add_firm(firm('q3',4,0,market_1))
+
+    model_cournot.summary()
+
 
 def main():
     model_1()
