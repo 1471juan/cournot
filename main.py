@@ -18,6 +18,10 @@ def model_1():
     model_cournot.add_firm(cs.firm('q3',4,0,market_1))
     model_cournot.summary()
 
+    #merge
+    model_cournot.merge([0,1])
+    model_cournot.summary()
+
 def main():
     model_1()
 

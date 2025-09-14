@@ -131,13 +131,22 @@ class cournot:
                 return False
         return True
     
+    def restart_mc_list(self):
+        self.firms_mc.clear()
+        for f in self.firms: self.firms_mc.append(f.get_mc())
+        self.flag_same_mc = self.check_mc()
+
     def add_firm(self,firm_obj):
         #adds firm to the model
         self.firms.append(firm_obj)
         self.market_obj.set_n(self.market_obj.get_n()+1)
-        self.firms_mc.clear()
-        for f in self.firms: self.firms_mc.append(f.get_mc())
-        self.flag_same_mc = self.check_mc()
+        self.restart_mc_list()
+
+    def remove_firm(self,firm_obj):
+        #adds firm to the model
+        self.firms.remove(firm_obj)
+        self.market_obj.set_n(self.market_obj.get_n()-1)
+        self.restart_mc_list()
 
     def get_output(self):
         #returns list with q
@@ -237,6 +246,21 @@ class cournot:
         P0 = self.market_obj.get_inversedemand(Q)
         P1 = self.market_obj.get_inversedemand(Q + 0.00001)
         return - (P0 / Q) / ((P1 - P0) / 0.00001)
+    
+    def merge(self, ids):
+        name='MERGED_'
+        mc=0
+        Fc=0
+        for i in ids:
+            name += self.firms[i].get_name() + '_'
+            mc+=self.firms[i].get_mc() * self.firms[i].get_weigh()
+            Fc+=self.firms[i].get_Fc()
+
+        for i,f in enumerate(self.firms):
+            for id in ids:
+                if i==id:
+                    self.remove_firm(f)
+        self.add_firm(firm(name, mc, Fc, self.market_obj))
     
     def summary(self):
         #run the model and print results
