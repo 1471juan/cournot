@@ -1,4 +1,4 @@
-Simulation for collusion in an asymetric costs cournot competition game with n firms.
+Simulation for collusion in an asymmetric costs cournot competition game with n firms.
 
 ### notes
 - The model is able to handle non linear demand and cost functions
